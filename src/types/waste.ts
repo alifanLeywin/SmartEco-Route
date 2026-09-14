@@ -14,3 +14,17 @@ export interface RouteSummary {
   estimatedMinutes: number;
   carbonSavedKg: number;
 }
+
+export interface WaypointCoordinate {
+  lat: number;
+  lng: number;
+}
+
+export interface OptimalRouteResult {
+  coordinates: [number, number][]; // [lat, lng] pairs for Leaflet Polyline
+  distanceMeters: number;
+  durationSeconds: number;
+  distanceKm: number;
+  durationMinutes: number;
+  carbonSavedKg: number;
+}

@@ -1,5 +1,5 @@
 import { useEffect, type JSX } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { BinLocation, WasteType } from '../types/waste';
@@ -8,6 +8,7 @@ export interface WasteMapProps {
   bins: BinLocation[];
   selectedBinId?: string | null;
   onSelectBin?: (binId: string) => void;
+  routeCoordinates?: [number, number][];
 }
 
 const GARUT_CENTER: [number, number] = [-7.214, 107.902];
@@ -57,17 +58,30 @@ function createBinIcon(fillLevel: number, isSelected: boolean): L.DivIcon {
   });
 }
 
-function MapController({ selectedBin }: { selectedBin?: BinLocation }): null {
+function MapController({
+  selectedBin,
+  routeCoordinates,
+}: {
+  selectedBin?: BinLocation;
+  routeCoordinates?: [number, number][];
+}): null {
   const map = useMap();
 
   useEffect(() => {
-    if (selectedBin) {
+    if (routeCoordinates && routeCoordinates.length > 1) {
+      const bounds = L.latLngBounds(routeCoordinates);
+      map.fitBounds(bounds, {
+        padding: [40, 40],
+        animate: true,
+        duration: 1.0,
+      });
+    } else if (selectedBin) {
       map.flyTo([selectedBin.lat, selectedBin.lng], 16, {
         animate: true,
         duration: 1.2,
       });
     }
-  }, [selectedBin, map]);
+  }, [selectedBin, routeCoordinates, map]);
 
   return null;
 }
@@ -109,6 +123,7 @@ export default function WasteMap({
   bins,
   selectedBinId,
   onSelectBin,
+  routeCoordinates,
 }: WasteMapProps): JSX.Element {
   const selectedBin = bins.find((b: BinLocation) => b.id === selectedBinId);
 
@@ -126,8 +141,37 @@ export default function WasteMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <MapController selectedBin={selectedBin} />
+        <MapController selectedBin={selectedBin} routeCoordinates={routeCoordinates} />
 
+        {/* OSRM Route Polyline Renderer */}
+        {routeCoordinates && routeCoordinates.length > 1 && (
+          <>
+            {/* Outer polyline shadow/glow */}
+            <Polyline
+              positions={routeCoordinates}
+              pathOptions={{
+                color: '#0284c7', // Sky blue shadow glow
+                weight: 8,
+                opacity: 0.35,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+            {/* Main high-contrast route path */}
+            <Polyline
+              positions={routeCoordinates}
+              pathOptions={{
+                color: '#2563eb', // Vivid Blue line
+                weight: 4.5,
+                opacity: 0.95,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+          </>
+        )}
+
+        {/* Bin Location Markers */}
         {bins.map((bin: BinLocation) => {
           const isSelected = bin.id === selectedBinId;
           const status = getStatusBadge(bin.fillLevel);
@@ -208,7 +252,7 @@ export default function WasteMap({
       {/* Floating Map Legend Overlay */}
       <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-lg border border-slate-200/90 shadow-md text-xs pointer-events-auto">
         <span className="font-bold text-slate-800 block mb-1 text-[11px] uppercase tracking-wider">
-          Telemetry Fill Level
+          Telemetry & Routing Legend
         </span>
         <div className="flex flex-col gap-1 text-slate-600 font-medium">
           <div className="flex items-center gap-2">
@@ -223,6 +267,12 @@ export default function WasteMap({
             <span className="h-3 w-3 rounded-full bg-emerald-500 border border-white shadow-xs ring-1 ring-emerald-200" />
             <span>&lt; 40% (Low / Normal)</span>
           </div>
+          {routeCoordinates && routeCoordinates.length > 0 && (
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+              <span className="h-1.5 w-4 rounded-full bg-blue-600 inline-block" />
+              <span className="text-blue-700 font-semibold">OSRM Active Driving Path</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,14 +1,19 @@
 import { useState, useMemo, type JSX } from 'react';
 import { mockBins, initialRouteSummary } from './data/mockBins';
-import type { BinLocation, WasteType, RouteSummary } from './types/waste';
+import type { BinLocation, WasteType, RouteSummary, WaypointCoordinate } from './types/waste';
 import WasteMap from './components/WasteMap';
+import { fetchOptimalRoute } from './services/osrmService';
 
 export default function App(): JSX.Element {
   const [bins] = useState<BinLocation[]>(mockBins);
   const [selectedType, setSelectedType] = useState<WasteType | 'all'>('all');
   const [onlyCritical, setOnlyCritical] = useState<boolean>(false);
   const [selectedBinId, setSelectedBinId] = useState<string | null>(null);
-  const [routeSummary] = useState<RouteSummary>(initialRouteSummary);
+  const [routeSummary, setRouteSummary] = useState<RouteSummary>(initialRouteSummary);
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
+  const [isLoadingRoute, setIsLoadingRoute] = useState<boolean>(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const [routeGeneratedAt, setRouteGeneratedAt] = useState<string | null>(null);
 
   const filteredBins = useMemo<BinLocation[]>(() => {
     return bins.filter((bin: BinLocation): boolean => {
@@ -18,9 +23,11 @@ export default function App(): JSX.Element {
     });
   }, [bins, selectedType, onlyCritical]);
 
-  const criticalCount = useMemo<number>(() => {
-    return bins.filter((bin: BinLocation): boolean => bin.fillLevel >= 75).length;
+  const criticalBins = useMemo<BinLocation[]>(() => {
+    return bins.filter((bin: BinLocation): boolean => bin.fillLevel >= 75);
   }, [bins]);
+
+  const criticalCount = criticalBins.length;
 
   const getFillBadgeClass = (fillLevel: number): string => {
     if (fillLevel >= 75) return 'bg-rose-100 text-rose-700 border-rose-200';
@@ -52,6 +59,42 @@ export default function App(): JSX.Element {
     setSelectedBinId((prev: string | null) => (prev === id ? null : id));
   };
 
+  /**
+   * Generates optimal smart route for critical bins (fillLevel >= 75%)
+   * using the OSRM Public Routing API.
+   */
+  const handleGenerateSmartRoute = async (): Promise<void> => {
+    if (criticalBins.length < 2) {
+      setRouteError('At least 2 critical bins (fill >= 75%) are required to compute a route.');
+      return;
+    }
+
+    setIsLoadingRoute(true);
+    setRouteError(null);
+
+    try {
+      const waypoints: WaypointCoordinate[] = criticalBins.map((bin: BinLocation) => ({
+        lat: bin.lat,
+        lng: bin.lng,
+      }));
+
+      const result = await fetchOptimalRoute(waypoints);
+
+      setRouteCoordinates(result.coordinates);
+      setRouteSummary({
+        distanceKm: result.distanceKm,
+        estimatedMinutes: result.durationMinutes,
+        carbonSavedKg: result.carbonSavedKg,
+      });
+      setRouteGeneratedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to generate optimal route.';
+      setRouteError(message);
+    } finally {
+      setIsLoadingRoute(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
       {/* Header */}
@@ -75,13 +118,44 @@ export default function App(): JSX.Element {
           <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Live Telemetry Active
+              OSRM Engine Connected
             </span>
             <button
               type="button"
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-medium transition-colors shadow-xs cursor-pointer"
+              onClick={handleGenerateSmartRoute}
+              disabled={isLoadingRoute}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
             >
-              Generate Optimized Route
+              {isLoadingRoute ? (
+                <>
+                  <svg
+                    className="animate-spin h-3.5 w-3.5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <span>Calculating Route...</span>
+                </>
+              ) : (
+                <>
+                  <span>🚀</span>
+                  <span>Generate Smart Route</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -113,22 +187,68 @@ export default function App(): JSX.Element {
                 {criticalCount}
               </span>
               <span className="text-[10px] text-rose-400 mt-0.5 block">
-                Immediate dispatch
+                Needs Pickup Route
               </span>
             </div>
 
             <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-xs">
               <span className="text-[11px] font-medium text-teal-600 uppercase tracking-wider block">
-                Est. Route
+                Optimal Route
               </span>
               <span className="text-2xl font-bold text-teal-700 mt-1 block">
                 {routeSummary.distanceKm}
                 <span className="text-xs font-normal text-slate-500 ml-0.5">km</span>
               </span>
               <span className="text-[10px] text-teal-600/80 mt-0.5 block">
-                ~{routeSummary.estimatedMinutes} mins ({routeSummary.carbonSavedKg} kg CO2)
+                ~{routeSummary.estimatedMinutes} mins • {routeSummary.carbonSavedKg} kg CO₂ saved
               </span>
             </div>
+          </div>
+
+          {/* Route Optimization Control & Status Card */}
+          <div className="bg-gradient-to-br from-emerald-900 to-slate-900 text-white rounded-xl p-4 shadow-md border border-emerald-800/60 flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <span className="text-[10px] font-bold text-emerald-400 tracking-wider uppercase">
+                  OSRM Routing Engine
+                </span>
+                <h3 className="text-sm font-bold text-white">
+                  Eco-Optimal Fleet Dispatch
+                </h3>
+              </div>
+              <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded text-[10px] font-semibold">
+                {criticalCount} Pickup Nodes
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              Calculates shortest road network path connecting all {criticalCount} bins with critical capacity (&ge;75%), reducing transit time and emissions.
+            </p>
+
+            {/* Error banner if any */}
+            {routeError && (
+              <div className="p-2.5 rounded-lg bg-rose-950/80 border border-rose-600/60 text-xs text-rose-200 flex items-start gap-2">
+                <span className="text-rose-400 font-bold">⚠️</span>
+                <span>{routeError}</span>
+              </div>
+            )}
+
+            {/* Active route info */}
+            {routeGeneratedAt && !routeError && (
+              <div className="p-2.5 rounded-lg bg-emerald-950/70 border border-emerald-500/40 text-xs text-emerald-200 flex items-center justify-between">
+                <span>✓ Active route calculated at {routeGeneratedAt}</span>
+                <span className="font-semibold text-white">{routeCoordinates.length} waypoints</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleGenerateSmartRoute}
+              disabled={isLoadingRoute}
+              className="w-full py-2 px-4 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-slate-950 font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            >
+              {isLoadingRoute ? 'Calculating Optimal Road Path...' : '⚡ Generate Smart Route for Critical Bins'}
+            </button>
           </div>
 
           {/* Controls & Filter Panel */}
@@ -194,7 +314,7 @@ export default function App(): JSX.Element {
               <span className="text-xs text-slate-400">Click bin to focus on map</span>
             </div>
 
-            <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
+            <div className="divide-y divide-slate-100 max-h-[380px] overflow-y-auto">
               {filteredBins.length === 0 ? (
                 <div className="p-8 text-center text-sm text-slate-400">
                   No bin locations match your current filter selection.
@@ -272,14 +392,21 @@ export default function App(): JSX.Element {
                   Interactive Fleet Route & Sensor Map
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Geographical view centered around Garut City Center (-7.214, 107.902)
+                  Live OpenStreetMap & OSRM Driving Engine • Garut Center (-7.214, 107.902)
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-mono font-medium">
-                  Garut Center Zone
-                </span>
+                {routeCoordinates.length > 0 ? (
+                  <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md font-medium flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
+                    OSRM Polyline ({routeCoordinates.length} pts)
+                  </span>
+                ) : (
+                  <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-mono font-medium">
+                    Standby Mode
+                  </span>
+                )}
               </div>
             </div>
 
@@ -288,6 +415,7 @@ export default function App(): JSX.Element {
               bins={filteredBins}
               selectedBinId={selectedBinId}
               onSelectBin={handleSelectBin}
+              routeCoordinates={routeCoordinates}
             />
           </div>
         </section>

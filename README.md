@@ -394,3 +394,137 @@ export default function WasteMap({
 
 ### Verification
 - Ran `npm run lint && npm run build` — both succeeded with **0 errors**, strict typing, and full ESLint compliance.
+
+Viewed waste.ts:1-17
+Created waste.ts
+Created osrmService.ts
+Created WasteMap.tsx
+Created App.tsx
+Ran command: `npm run lint && npm run build`
+Viewed osrmService.ts:1-91
+Edited osrmService.ts
+Ran command: `npm run lint && npm run build`
+Used tool: manage_task
+
+OSRM Public API integration is complete, allowing real-time fetching and dynamic Leaflet polyline rendering of the optimal driving route for critical waste bins ($\ge 75\%$).
+
+---
+
+### 1. OSRM Service: [`src/services/osrmService.ts`](SmartEco-Route/src/services/osrmService.ts)
+
+- **Endpoint**: `https://router.project-osrm.org/route/v1/driving/{coordinates}?overview=full&geometries=geojson`
+- **Format Handling**: Automatically formats `WaypointCoordinate[]` (`{lat, lng}`) into OSRM's required `lng,lat;lng,lat;...` URL format.
+- **Leaflet Coordinate Conversion**: Converts GeoJSON `[lng, lat]` returned by OSRM to Leaflet-compatible `[lat, lng]` pairs.
+- **Eco Metrics**: Calculates distance in km, duration in minutes, and estimated carbon saved ($CO_2\text{ in kg} = \text{distance in km} \times 0.21$).
+- **Robust Error Handling**: Handles network failures, empty routes, and timeouts via `AbortController`.
+
+```typescript
+import type { OptimalRouteResult, WaypointCoordinate } from '../types/waste';
+
+interface OSRMRouteResponse {
+  code: string;
+  message?: string;
+  routes?: Array<{
+    geometry: {
+      coordinates: [number, number][]; // [longitude, latitude]
+      type: string;
+    };
+    distance: number; // in meters
+    duration: number; // in seconds
+  }>;
+}
+
+export async function fetchOptimalRoute(
+  waypoints: WaypointCoordinate[]
+): Promise<OptimalRouteResult> {
+  if (waypoints.length < 2) {
+    throw new Error('At least 2 waypoints are required to generate a route.');
+  }
+
+  const coordinatesString = waypoints
+    .map((wp: WaypointCoordinate) => `${wp.lng},${wp.lat}`)
+    .join(';');
+
+  const url = `https://router.project-osrm.org/route/v1/driving/${coordinatesString}?overview=full&geometries=geojson`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: 'application/json' },
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`OSRM API responded with status ${response.status} (${response.statusText})`);
+    }
+
+    const data = (await response.json()) as OSRMRouteResponse;
+
+    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+      throw new Error(data.message || 'No valid route found between the provided waypoints.');
+    }
+
+    const bestRoute = data.routes[0];
+    const distanceMeters = bestRoute.distance;
+    const durationSeconds = bestRoute.duration;
+
+    const leafletCoordinates: [number, number][] = bestRoute.geometry.coordinates.map(
+      ([lng, lat]: [number, number]): [number, number] => [lat, lng]
+    );
+
+    const distanceKm = Number((distanceMeters / 1000).toFixed(2));
+    const durationMinutes = Math.round(durationSeconds / 60);
+    const carbonSavedKg = Number((distanceKm * 0.21).toFixed(2));
+
+    return {
+      coordinates: leafletCoordinates,
+      distanceMeters,
+      durationSeconds,
+      distanceKm,
+      durationMinutes,
+      carbonSavedKg,
+    };
+  } catch (error: unknown) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Routing request timed out. Please check your internet connection.', {
+        cause: error,
+      });
+    }
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch optimal route: ${error.message}`, {
+        cause: error,
+      });
+    }
+    throw new Error('An unexpected error occurred while calculating the route.', {
+      cause: error,
+    });
+  }
+}
+```
+
+---
+
+### 2. Polyline Renderer in Map: [`src/components/WasteMap.tsx`](SmartEco-Route/src/components/WasteMap.tsx)
+
+- Accepts `routeCoordinates?: [number, number][]`.
+- Renders high-visibility layered Leaflet `Polyline` with outer glow and vivid blue driving path.
+- Automatically fits map bounds (`fitBounds`) to the route when calculated.
+
+---
+
+### 3. Route Generation UI & State: [`src/App.tsx`](SmartEco-Route/src/App.tsx)
+
+- **Smart Route Trigger**: Action buttons in header and sidebar trigger `handleGenerateSmartRoute`.
+- **Target Filtering**: Automatically targets bins with `fillLevel >= 75%`.
+- **Dynamic Metrics**: Updates the estimated duration, total distance, and carbon saved ($CO_2$).
+- **State Feedback**: Displays loading spinners during API calls, banner alerts for errors, and active route timestamps.
+
+---
+
+### Verification
+- Ran `npm run lint && npm run build` — both succeeded with **0 errors**, strict typing, and full ESLint compliance.
