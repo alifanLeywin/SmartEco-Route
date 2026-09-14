@@ -1,160 +1,3 @@
-### Typescript interfaces, mock data, and layout structure for the **Garut Smart Waste Management Routing Dashboard** have been created and verified.
-
----
-
-### 1. TypeScript Interface: [`src/types/waste.ts`](SmartEco-Route/src/types/waste.ts)
-
-```typescript
-export type WasteType = 'plastic' | 'paper' | 'organic' | 'general';
-
-export interface BinLocation {
-  id: string;
-  name: string;
-  fillLevel: number; // 0-100 percentage
-  lat: number;
-  lng: number;
-  type: WasteType;
-}
-
-export interface RouteSummary {
-  distanceKm: number;
-  estimatedMinutes: number;
-  carbonSavedKg: number;
-}
-```
-
----
-
-### 2. Mock Data: [`src/data/mockBins.ts`](SmartEco-Route/src/data/mockBins.ts)
-
-Includes 8 realistic bin locations around Garut city center (`lat: ~ -7.21`, `lng: ~ 107.90`) with varied fill levels and waste types:
-
-```typescript
-import type { BinLocation, RouteSummary } from '../types/waste';
-
-export const mockBins: BinLocation[] = [
-  {
-    id: 'bin-garut-001',
-    name: 'Alun-Alun Garut Central',
-    fillLevel: 88,
-    lat: -7.2163,
-    lng: 107.9015,
-    type: 'general',
-  },
-  {
-    id: 'bin-garut-002',
-    name: 'Simpang Lima Garut Hub',
-    fillLevel: 94,
-    lat: -7.2024,
-    lng: 107.8932,
-    type: 'plastic',
-  },
-  {
-    id: 'bin-garut-003',
-    name: 'Bundaran Tarogong Point',
-    fillLevel: 42,
-    lat: -7.1895,
-    lng: 107.8864,
-    type: 'paper',
-  },
-  {
-    id: 'bin-garut-004',
-    name: 'Pasar Baru Garut Trading Zone',
-    fillLevel: 91,
-    lat: -7.212,
-    lng: 107.9048,
-    type: 'organic',
-  },
-  {
-    id: 'bin-garut-005',
-    name: 'Lapang Merdeka (Kerkof)',
-    fillLevel: 65,
-    lat: -7.2241,
-    lng: 107.9056,
-    type: 'plastic',
-  },
-  {
-    id: 'bin-garut-006',
-    name: 'RSU dr. Slamet Public Access',
-    fillLevel: 82,
-    lat: -7.2198,
-    lng: 107.892,
-    type: 'general',
-  },
-  {
-    id: 'bin-garut-007',
-    name: 'Sentra Kuliner Cimanuk',
-    fillLevel: 35,
-    lat: -7.2085,
-    lng: 107.9072,
-    type: 'organic',
-  },
-  {
-    id: 'bin-garut-008',
-    name: 'IBC (Intan Business Center)',
-    fillLevel: 78,
-    lat: -7.2144,
-    lng: 107.898,
-    type: 'paper',
-  },
-];
-
-export const initialRouteSummary: RouteSummary = {
-  distanceKm: 14.8,
-  estimatedMinutes: 38,
-  carbonSavedKg: 4.2,
-};
-```
-
----
-
-### 3. Application Layout: [`src/App.tsx`](SmartEco-Route/src/App.tsx)
-
-- **Header**: Displays `"Garut Smart Waste - Tech For Waste"` with real-time status telemetry indicators and action triggers.
-- **Two-Column Responsive Layout**:
-  - **Left Sidebar**: Total bin counters, critical bin indicators ($\ge 75\%$), estimated route KPIs, waste type & critical status filter controls, and interactive bin telemetry list.
-  - **Right Main Container**: Map container ready for map library integration (Leaflet/Mapbox/OSM), telemetry coordinate overlays, node markers, and route status legends.
-- **Code Quality**: Full TypeScript typing, explicit function return types (`JSX.Element`, `string`, etc.), and 100% compliant with ESLint rules.
-
----
-
-### Verification
-- Ran `npm run lint` & `npm run build` — both succeeded with 0 errors.
-
-
-
-Ran command: `npm install leaflet @types/leaflet react-leaflet`
-Viewed main.tsx:1-11
-Created WasteMap.tsx
-Created App.tsx
-Viewed index.css:1-25
-Created index.css
-Ran command: `npm run lint && npm run build`
-Used tool: manage_task
-Used tool: manage_task
-
-Leaflet interactive map integration is complete with dynamic fill-level indicators, markers, popups, and full TypeScript typing.
-
----
-
-### 1. Installed Dependencies
-Installed `leaflet`, `@types/leaflet`, and `react-leaflet`.
-
----
-
-### 2. Map Component: [`src/components/WasteMap.tsx`](SmartEco-Route/src/components/WasteMap.tsx)
-
-Key features:
-- **Garut Centering**: Centered at coordinates `[-7.214, 107.902]` with default zoom `14`.
-- **Dynamic Fill-Level Markers**:
-  - $\ge 75\%$: **Red / Rose marker** with active pulsing ring (Critical - Needs Immediate Pickup).
-  - $40\% - 74\%$: **Yellow / Amber marker** (Moderate Fill).
-  - $< 40\%$: **Green / Emerald marker** (Low / Normal).
-- **Interactive Popup**: Displays Bin Name, ID, Waste Category Badge, Capacity Fill Bar (%), Status Badge, and exact Coordinates.
-- **Bi-directional Focus**: Selecting a bin from either the sidebar or the map smoothly focuses (`flyTo`) the camera on that marker.
-- **Floating Telemetry Legend**: Bottom-left overlay showing the fill level thresholds.
-
-```tsx
 import { useEffect, type JSX } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -170,6 +13,7 @@ export interface WasteMapProps {
 const GARUT_CENTER: [number, number] = [-7.214, 107.902];
 const DEFAULT_ZOOM = 14;
 
+// Helper to generate dynamic styled DivIcon for each bin status
 function createBinIcon(fillLevel: number, isSelected: boolean): L.DivIcon {
   let colorClass = '#10b981'; // emerald (<40%)
   let pulseRing = '';
@@ -304,6 +148,7 @@ export default function WasteMap({
             >
               <Popup className="custom-leaflet-popup">
                 <div className="p-1 min-w-[210px] font-sans">
+                  {/* Bin Header */}
                   <div className="flex items-start justify-between gap-2 pb-1.5 border-b border-slate-100">
                     <div>
                       <h4 className="font-bold text-sm text-slate-900 leading-tight">
@@ -322,6 +167,7 @@ export default function WasteMap({
                     </span>
                   </div>
 
+                  {/* Fill Level Meter */}
                   <div className="my-2">
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="font-medium text-slate-600">Capacity Fill:</span>
@@ -341,6 +187,7 @@ export default function WasteMap({
                     </div>
                   </div>
 
+                  {/* Status Badge */}
                   <div className="pt-1 flex flex-col gap-1.5">
                     <span
                       className={`text-[11px] font-semibold px-2 py-1 rounded border text-center ${status.badgeClass}`}
@@ -358,6 +205,7 @@ export default function WasteMap({
         })}
       </MapContainer>
 
+      {/* Floating Map Legend Overlay */}
       <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-lg border border-slate-200/90 shadow-md text-xs pointer-events-auto">
         <span className="font-bold text-slate-800 block mb-1 text-[11px] uppercase tracking-wider">
           Telemetry Fill Level
@@ -380,17 +228,3 @@ export default function WasteMap({
     </div>
   );
 }
-```
-
----
-
-### 3. Integrated into [`src/App.tsx`](SmartEco-Route/src/App.tsx) & Leaflet CSS in [`src/index.css`](SmartEco-Route/src/index.css)
-
-- Rendered `WasteMap` inside the right column.
-- Connected bin selection and category filters so clicking either the list item or marker synchronizes selection and triggers smooth map centering.
-- Added CSS container styling and popup styling overrides in [`src/index.css`](SmartEco-Route/src/index.css).
-
----
-
-### Verification
-- Ran `npm run lint && npm run build` — both succeeded with **0 errors**, strict typing, and full ESLint compliance.

@@ -1,6 +1,7 @@
 import { useState, useMemo, type JSX } from 'react';
 import { mockBins, initialRouteSummary } from './data/mockBins';
 import type { BinLocation, WasteType, RouteSummary } from './types/waste';
+import WasteMap from './components/WasteMap';
 
 export default function App(): JSX.Element {
   const [bins] = useState<BinLocation[]>(mockBins);
@@ -22,14 +23,14 @@ export default function App(): JSX.Element {
   }, [bins]);
 
   const getFillBadgeClass = (fillLevel: number): string => {
-    if (fillLevel >= 80) return 'bg-rose-100 text-rose-700 border-rose-200';
-    if (fillLevel >= 60) return 'bg-amber-100 text-amber-700 border-amber-200';
+    if (fillLevel >= 75) return 'bg-rose-100 text-rose-700 border-rose-200';
+    if (fillLevel >= 40) return 'bg-amber-100 text-amber-700 border-amber-200';
     return 'bg-emerald-100 text-emerald-700 border-emerald-200';
   };
 
   const getFillBarColor = (fillLevel: number): string => {
-    if (fillLevel >= 80) return 'bg-rose-500';
-    if (fillLevel >= 60) return 'bg-amber-500';
+    if (fillLevel >= 75) return 'bg-rose-500';
+    if (fillLevel >= 40) return 'bg-amber-500';
     return 'bg-emerald-500';
   };
 
@@ -47,9 +48,9 @@ export default function App(): JSX.Element {
     }
   };
 
-  const selectedBin = useMemo<BinLocation | undefined>(() => {
-    return bins.find((bin: BinLocation) => bin.id === selectedBinId);
-  }, [bins, selectedBinId]);
+  const handleSelectBin = (id: string): void => {
+    setSelectedBinId((prev: string | null) => (prev === id ? null : id));
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
@@ -125,7 +126,7 @@ export default function App(): JSX.Element {
                 <span className="text-xs font-normal text-slate-500 ml-0.5">km</span>
               </span>
               <span className="text-[10px] text-teal-600/80 mt-0.5 block">
-                ~{routeSummary.estimatedMinutes} mins ({routeSummary.carbonSavedKg} kg CO2 saved)
+                ~{routeSummary.estimatedMinutes} mins ({routeSummary.carbonSavedKg} kg CO2)
               </span>
             </div>
           </div>
@@ -190,10 +191,10 @@ export default function App(): JSX.Element {
               <h3 className="text-sm font-semibold text-slate-800">
                 Garut City Bins Telemetry
               </h3>
-              <span className="text-xs text-slate-400">Click bin to view details</span>
+              <span className="text-xs text-slate-400">Click bin to focus on map</span>
             </div>
 
-            <div className="divide-y divide-slate-100 max-h-[380px] overflow-y-auto">
+            <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
               {filteredBins.length === 0 ? (
                 <div className="p-8 text-center text-sm text-slate-400">
                   No bin locations match your current filter selection.
@@ -204,12 +205,10 @@ export default function App(): JSX.Element {
                   return (
                     <div
                       key={bin.id}
-                      onClick={(): void =>
-                        setSelectedBinId(isSelected ? null : bin.id)
-                      }
+                      onClick={(): void => handleSelectBin(bin.id)}
                       onKeyDown={(e): void => {
                         if (e.key === 'Enter' || e.key === ' ') {
-                          setSelectedBinId(isSelected ? null : bin.id);
+                          handleSelectBin(bin.id);
                         }
                       }}
                       role="button"
@@ -265,140 +264,31 @@ export default function App(): JSX.Element {
 
         {/* Right Column: Main container for map (7 cols) */}
         <section className="lg:col-span-7 flex flex-col gap-4 order-1 lg:order-2">
-          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-4 flex flex-col min-h-[580px]">
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-4 flex flex-col">
             {/* Map Header Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 mb-3">
               <div>
                 <h2 className="text-base font-bold text-slate-900">
                   Interactive Fleet Route & Sensor Map
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Geographical view centered around Garut City Center (-7.216, 107.901)
+                  Geographical view centered around Garut City Center (-7.214, 107.902)
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-mono font-medium">
-                  Garut Core Sector
+                  Garut Center Zone
                 </span>
               </div>
             </div>
 
-            {/* Map Viewport Area (Container for map integration like Leaflet/Mapbox/OSM) */}
-            <div className="relative flex-1 bg-slate-900 rounded-lg overflow-hidden my-3 border border-slate-800 flex flex-col items-center justify-center p-6 text-white min-h-[420px]">
-              {/* Background decorative grid/map styling */}
-              <div
-                className="absolute inset-0 opacity-20 pointer-events-none"
-                style={{
-                  backgroundImage:
-                    'radial-gradient(#10b981 1px, transparent 1px), radial-gradient(#38bdf8 1px, transparent 1px)',
-                  backgroundSize: '32px 32px',
-                  backgroundPosition: '0 0, 16px 16px',
-                }}
-              />
-
-              {/* Simulated Map Markers and Routing Path */}
-              <div className="relative z-10 w-full h-full flex flex-col justify-between">
-                {/* Top overlay telemetry badge */}
-                <div className="flex items-center justify-between w-full">
-                  <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300">
-                    <span className="text-emerald-400 font-semibold mr-1">GPS Center:</span>
-                    Lat -7.2100° • Lng 107.8950°
-                  </div>
-                  <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 flex items-center gap-2">
-                    <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
-                    <span>{criticalCount} Overfilled Bins Alert</span>
-                  </div>
-                </div>
-
-                {/* Map Center Display / Marker Network Representation */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-auto py-6">
-                  {filteredBins.slice(0, 8).map((bin: BinLocation) => {
-                    const isSelected = bin.id === selectedBinId;
-                    const isCritical = bin.fillLevel >= 75;
-                    return (
-                      <button
-                        key={bin.id}
-                        type="button"
-                        onClick={(): void => setSelectedBinId(bin.id)}
-                        className={`p-3 rounded-lg border text-left transition-all backdrop-blur-sm cursor-pointer ${
-                          isSelected
-                            ? 'bg-emerald-950/90 border-emerald-400 ring-2 ring-emerald-400/50 scale-102'
-                            : isCritical
-                            ? 'bg-slate-950/80 border-rose-500/50 hover:border-rose-400'
-                            : 'bg-slate-950/70 border-slate-800 hover:border-slate-600'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {bin.id.replace('bin-garut-', 'ID-')}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                              isCritical
-                                ? 'bg-rose-900/80 text-rose-300'
-                                : 'bg-slate-800 text-slate-300'
-                            }`}
-                          >
-                            {bin.fillLevel}%
-                          </span>
-                        </div>
-                        <p className="text-xs font-semibold text-slate-200 truncate">
-                          {bin.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 capitalize mt-0.5">
-                          {bin.type}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Bottom map status & route indicator */}
-                <div className="bg-slate-950/90 backdrop-blur-md border border-slate-800 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-teal-400 animate-ping" />
-                    <span className="text-slate-300">
-                      Smart Eco-Routing Path active: <strong>{routeSummary.distanceKm} km</strong> across Garut
-                    </span>
-                  </div>
-                  {selectedBin ? (
-                    <span className="text-emerald-400 font-medium">
-                      Focused: {selectedBin.name} ({selectedBin.fillLevel}% filled)
-                    </span>
-                  ) : (
-                    <span className="text-slate-400 italic">
-                      Select any node to view routing waypoint
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Map Legend & Footer details */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs text-slate-500 border-t border-slate-100">
-              <div className="flex items-center gap-4">
-                <span className="font-semibold text-slate-700">Fill Legend:</span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  Normal (&lt;60%)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                  Moderate (60-74%)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
-                  Critical (&ge;75%)
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[11px] font-mono">
-                  Garut Routing Engine v1.0
-                </span>
-              </div>
-            </div>
+            {/* Render WasteMap Component */}
+            <WasteMap
+              bins={filteredBins}
+              selectedBinId={selectedBinId}
+              onSelectBin={handleSelectBin}
+            />
           </div>
         </section>
       </main>
