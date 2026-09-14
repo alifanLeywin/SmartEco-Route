@@ -1,63 +1,114 @@
 import { useEffect, type JSX } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import type { BinLocation, WasteType } from '../types/waste';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default Leaflet marker icon URLs in Vite/Webpack environments
+import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
+import iconUrl from 'leaflet/dist/images/marker-icon.png';
+import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
+
+// Override the default prototype icon paths to avoid broken 404 images
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl,
+  iconUrl,
+  shadowUrl,
+});
 
 export interface WasteMapProps {
   bins: BinLocation[];
   selectedBinId?: string | null;
-  onSelectBin?: (binId: string) => void;
+  onSelectBin?: (id: string) => void;
   routeCoordinates?: [number, number][];
 }
 
+// Center coordinate for Garut City Center
 const GARUT_CENTER: [number, number] = [-7.214, 107.902];
 const DEFAULT_ZOOM = 14;
 
-// Helper to generate dynamic styled DivIcon for each bin status
+// Dynamic SVG Marker creator with 3D puffy clay glow
 function createBinIcon(fillLevel: number, isSelected: boolean): L.DivIcon {
-  let colorClass = '#10b981'; // emerald (<40%)
-  let pulseRing = '';
-  let label = 'LOW';
+  let color = '#10b981'; // Green (Low)
+  let shadowColor = 'rgba(16, 185, 129, 0.4)';
 
   if (fillLevel >= 75) {
-    colorClass = '#ef4444'; // rose/red (>=75%)
-    pulseRing = 'animate-ping';
-    label = 'CRITICAL';
+    color = '#f43f5e'; // Pink / Rose (Critical)
+    shadowColor = 'rgba(244, 63, 94, 0.5)';
   } else if (fillLevel >= 40) {
-    colorClass = '#f59e0b'; // amber/yellow (40-74%)
-    label = 'MODERATE';
+    color = '#f59e0b'; // Amber (Moderate)
+    shadowColor = 'rgba(245, 158, 11, 0.4)';
   }
 
-  const selectedRingStyle = isSelected
-    ? 'border-2 border-white ring-4 ring-emerald-500 scale-110 shadow-lg'
-    : 'border-2 border-white shadow-md hover:scale-110';
+  const pulseEffect = fillLevel >= 75 ? 'animate-bounce' : '';
+  const scaleEffect = isSelected ? 'scale-125' : 'hover:scale-110';
 
   const html = `
-    <div class="relative flex items-center justify-center cursor-pointer transition-transform duration-200">
-      ${
-        fillLevel >= 75
-          ? `<span class="absolute inline-flex h-8 w-8 rounded-full bg-rose-400 opacity-60 ${pulseRing}"></span>`
-          : ''
-      }
-      <div style="background-color: ${colorClass};" class="relative z-10 flex flex-col items-center justify-center w-8 h-8 rounded-full text-white font-bold text-[10px] ${selectedRingStyle}">
+    <div class="relative flex items-center justify-center transition-all duration-300 ${scaleEffect} ${pulseEffect}">
+      <div 
+        style="
+          background: ${color};
+          border: 3px solid #ffffff;
+          box-shadow: 0 8px 16px ${shadowColor}, inset 2px 2px 4px rgba(255,255,255,0.8), inset -2px -2px 4px rgba(0,0,0,0.2);
+          border-color: ${isSelected ? '#6366f1' : '#ffffff'};
+        "
+        class="w-10 h-10 rounded-2xl flex flex-col items-center justify-center text-white font-extrabold text-[10px] tracking-tighter"
+      >
         <span>${fillLevel}%</span>
       </div>
-      <div class="absolute -bottom-1 z-20 px-1 py-0.2 bg-slate-900/90 text-[8px] font-bold text-white rounded shadow-xs tracking-wider">
-        ${label}
-      </div>
+      ${
+        fillLevel >= 75
+          ? `<span class="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-600 border border-white"></span>
+            </span>`
+          : ''
+      }
     </div>
   `;
 
   return L.divIcon({
-    className: 'custom-bin-marker',
     html,
-    iconSize: [32, 38],
-    iconAnchor: [16, 24],
+    className: 'custom-bin-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
     popupAnchor: [0, -22],
   });
 }
 
+function getStatusBadge(fillLevel: number): { label: string; badgeClass: string } {
+  if (fillLevel >= 75) {
+    return {
+      label: 'Critical - Immediate Pickup Required',
+      badgeClass: 'clay-badge-red text-rose-700',
+    };
+  }
+  if (fillLevel >= 40) {
+    return {
+      label: 'Moderate - Monitor Fill Rate',
+      badgeClass: 'clay-badge-yellow text-amber-700',
+    };
+  }
+  return {
+    label: 'Optimal - Regular Capacity',
+    badgeClass: 'clay-badge-green text-emerald-700',
+  };
+}
+
+function getTypeBadgeStyle(type: WasteType): string {
+  switch (type) {
+    case 'plastic':
+      return 'bg-cyan-100 text-cyan-800 border-cyan-200';
+    case 'paper':
+      return 'bg-pink-100 text-pink-800 border-pink-200';
+    case 'organic':
+      return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    case 'general':
+      return 'bg-amber-100 text-amber-800 border-amber-200';
+  }
+}
+
+// Controller component to automatically pan and fit bounds
 function MapController({
   selectedBin,
   routeCoordinates,
@@ -68,55 +119,19 @@ function MapController({
   const map = useMap();
 
   useEffect(() => {
+    if (selectedBin) {
+      map.flyTo([selectedBin.lat, selectedBin.lng], 16, { duration: 1.2 });
+    }
+  }, [selectedBin, map]);
+
+  useEffect(() => {
     if (routeCoordinates && routeCoordinates.length > 1) {
       const bounds = L.latLngBounds(routeCoordinates);
-      map.fitBounds(bounds, {
-        padding: [40, 40],
-        animate: true,
-        duration: 1.0,
-      });
-    } else if (selectedBin) {
-      map.flyTo([selectedBin.lat, selectedBin.lng], 16, {
-        animate: true,
-        duration: 1.2,
-      });
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
     }
-  }, [selectedBin, routeCoordinates, map]);
+  }, [routeCoordinates, map]);
 
   return null;
-}
-
-function getStatusBadge(fillLevel: number): { label: string; badgeClass: string } {
-  if (fillLevel >= 75) {
-    return {
-      label: 'Critical - Needs Immediate Pickup',
-      badgeClass: 'bg-rose-100 text-rose-800 border-rose-200',
-    };
-  }
-  if (fillLevel >= 40) {
-    return {
-      label: 'Moderate Fill',
-      badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
-    };
-  }
-  return {
-    label: 'Low / Normal',
-    badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  };
-}
-
-function getTypeBadgeStyle(type: WasteType): string {
-  switch (type) {
-    case 'plastic':
-      return 'bg-blue-50 text-blue-700 border-blue-200';
-    case 'paper':
-      return 'bg-amber-50 text-amber-700 border-amber-200';
-    case 'organic':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    case 'general':
-    default:
-      return 'bg-slate-100 text-slate-700 border-slate-200';
-  }
 }
 
 export default function WasteMap({
@@ -128,7 +143,7 @@ export default function WasteMap({
   const selectedBin = bins.find((b: BinLocation) => b.id === selectedBinId);
 
   return (
-    <div className="relative w-full h-[520px] rounded-xl overflow-hidden border border-slate-200 shadow-inner z-0">
+    <div className="relative w-full h-[520px] clay-map-frame z-0">
       <MapContainer
         center={GARUT_CENTER}
         zoom={DEFAULT_ZOOM}
@@ -146,11 +161,11 @@ export default function WasteMap({
         {/* OSRM Route Polyline Renderer */}
         {routeCoordinates && routeCoordinates.length > 1 && (
           <>
-            {/* Outer polyline shadow/glow */}
+            {/* Outer polyline shadow glow */}
             <Polyline
               positions={routeCoordinates}
               pathOptions={{
-                color: '#0284c7', // Sky blue shadow glow
+                color: '#6366f1',
                 weight: 8,
                 opacity: 0.35,
                 lineCap: 'round',
@@ -161,8 +176,8 @@ export default function WasteMap({
             <Polyline
               positions={routeCoordinates}
               pathOptions={{
-                color: '#2563eb', // Vivid Blue line
-                weight: 4.5,
+                color: '#4f46e5',
+                weight: 5,
                 opacity: 0.95,
                 lineCap: 'round',
                 lineJoin: 'round',
@@ -191,11 +206,11 @@ export default function WasteMap({
               }}
             >
               <Popup className="custom-leaflet-popup">
-                <div className="p-1 min-w-[210px] font-sans">
+                <div className="p-3 min-w-[220px] font-sans">
                   {/* Bin Header */}
-                  <div className="flex items-start justify-between gap-2 pb-1.5 border-b border-slate-100">
+                  <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-100">
                     <div>
-                      <h4 className="font-bold text-sm text-slate-900 leading-tight">
+                      <h4 className="font-extrabold text-sm text-slate-900 leading-tight">
                         {bin.name}
                       </h4>
                       <span className="text-[10px] font-mono text-slate-400">
@@ -203,7 +218,7 @@ export default function WasteMap({
                       </span>
                     </div>
                     <span
-                      className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border capitalize ${getTypeBadgeStyle(
+                      className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border capitalize ${getTypeBadgeStyle(
                         bin.type
                       )}`}
                     >
@@ -212,14 +227,14 @@ export default function WasteMap({
                   </div>
 
                   {/* Fill Level Meter */}
-                  <div className="my-2">
+                  <div className="my-2.5">
                     <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="font-medium text-slate-600">Capacity Fill:</span>
-                      <span className="font-bold text-slate-900">{bin.fillLevel}%</span>
+                      <span className="font-semibold text-slate-600">Capacity Fill:</span>
+                      <span className="font-extrabold text-slate-900">{bin.fillLevel}%</span>
                     </div>
-                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden shadow-inner">
                       <div
-                        className={`h-full rounded-full ${
+                        className={`h-full rounded-full transition-all ${
                           bin.fillLevel >= 75
                             ? 'bg-rose-500'
                             : bin.fillLevel >= 40
@@ -234,11 +249,11 @@ export default function WasteMap({
                   {/* Status Badge */}
                   <div className="pt-1 flex flex-col gap-1.5">
                     <span
-                      className={`text-[11px] font-semibold px-2 py-1 rounded border text-center ${status.badgeClass}`}
+                      className={`text-[10px] font-bold px-2 py-1 rounded-full text-center ${status.badgeClass}`}
                     >
                       {status.label}
                     </span>
-                    <div className="text-[10px] text-slate-500 text-center font-mono">
+                    <div className="text-[10px] text-slate-400 text-center font-mono">
                       {bin.lat.toFixed(5)}, {bin.lng.toFixed(5)}
                     </div>
                   </div>
@@ -249,28 +264,28 @@ export default function WasteMap({
         })}
       </MapContainer>
 
-      {/* Floating Map Legend Overlay */}
-      <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-lg border border-slate-200/90 shadow-md text-xs pointer-events-auto">
-        <span className="font-bold text-slate-800 block mb-1 text-[11px] uppercase tracking-wider">
+      {/* Floating Map Legend Overlay – Clay Card */}
+      <div className="absolute bottom-4 left-4 z-[1000] p-3.5 clay-card-white pointer-events-auto max-w-xs">
+        <span className="font-extrabold text-slate-800 block mb-2 text-[11px] uppercase tracking-wider">
           Telemetry & Routing Legend
         </span>
-        <div className="flex flex-col gap-1 text-slate-600 font-medium">
+        <div className="flex flex-col gap-1.5 text-slate-600 text-xs font-semibold">
           <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-rose-500 border border-white shadow-xs ring-1 ring-rose-200" />
+            <span className="h-3 w-3 rounded-full bg-rose-500 shadow-sm" />
             <span>&ge; 75% (Critical - Pickup Required)</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-amber-500 border border-white shadow-xs ring-1 ring-amber-200" />
+            <span className="h-3 w-3 rounded-full bg-amber-500 shadow-sm" />
             <span>40% - 74% (Moderate)</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-emerald-500 border border-white shadow-xs ring-1 ring-emerald-200" />
+            <span className="h-3 w-3 rounded-full bg-emerald-500 shadow-sm" />
             <span>&lt; 40% (Low / Normal)</span>
           </div>
           {routeCoordinates && routeCoordinates.length > 0 && (
-            <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-              <span className="h-1.5 w-4 rounded-full bg-blue-600 inline-block" />
-              <span className="text-blue-700 font-semibold">OSRM Active Driving Path</span>
+            <div className="flex items-center gap-2 pt-1.5 border-t border-slate-100">
+              <span className="h-2 w-4 rounded-full bg-indigo-600 inline-block" />
+              <span className="text-indigo-600 font-bold">OSRM Active Driving Path</span>
             </div>
           )}
         </div>

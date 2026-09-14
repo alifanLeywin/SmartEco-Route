@@ -1,17 +1,55 @@
 @import "tailwindcss";
 
 :root {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
     Cantarell, sans-serif;
   color-scheme: light;
+
+  /* ── Claymorphism Color Palette (Airy Lavender / Eco Pastel) ── */
+  --clay-bg-canvas: #f0f2fd;
+  --clay-bg-canvas-end: #e5e9f8;
+
+  /* Clay White Shadows */
+  --clay-white-outer: 10px 14px 28px rgba(160, 172, 205, 0.28), -8px -8px 22px rgba(255, 255, 255, 0.95);
+  --clay-white-inner: inset 3px 3px 6px rgba(255, 255, 255, 1), inset -3px -3px 8px rgba(175, 185, 215, 0.25);
+
+  /* Clay Purple / Indigo Card */
+  --clay-purple-outer: 10px 16px 30px rgba(99, 102, 241, 0.35), -6px -6px 18px rgba(255, 255, 255, 0.7);
+  --clay-purple-inner: inset 3px 3px 6px rgba(255, 255, 255, 0.45), inset -4px -4px 8px rgba(30, 27, 75, 0.3);
+
+  /* Clay Emerald / Green */
+  --clay-green-outer: 8px 12px 24px rgba(16, 185, 129, 0.3), -5px -5px 15px rgba(255, 255, 255, 0.75);
+  --clay-green-inner: inset 3px 3px 5px rgba(255, 255, 255, 0.65), inset -3px -3px 6px rgba(6, 78, 59, 0.25);
+
+  /* Clay Rose / Coral */
+  --clay-rose-outer: 8px 12px 24px rgba(244, 63, 94, 0.3), -5px -5px 15px rgba(255, 255, 255, 0.75);
+  --clay-rose-inner: inset 3px 3px 5px rgba(255, 255, 255, 0.65), inset -3px -3px 6px rgba(136, 19, 55, 0.25);
+
+  /* Clay Amber / Orange */
+  --clay-amber-outer: 8px 12px 24px rgba(245, 158, 11, 0.3), -5px -5px 15px rgba(255, 255, 255, 0.75);
+  --clay-amber-inner: inset 3px 3px 5px rgba(255, 255, 255, 0.65), inset -3px -3px 6px rgba(120, 53, 15, 0.25);
+
+  /* Clay Cyan / Sky */
+  --clay-cyan-outer: 8px 12px 24px rgba(6, 182, 212, 0.3), -5px -5px 15px rgba(255, 255, 255, 0.75);
+  --clay-cyan-inner: inset 3px 3px 5px rgba(255, 255, 255, 0.65), inset -3px -3px 6px rgba(22, 78, 99, 0.25);
+
+  /* Clay Dark Card */
+  --clay-dark-outer: 10px 16px 30px rgba(15, 23, 42, 0.35), -6px -6px 18px rgba(255, 255, 255, 0.7);
+  --clay-dark-inner: inset 3px 3px 6px rgba(255, 255, 255, 0.12), inset -4px -4px 8px rgba(0, 0, 0, 0.4);
+
+  /* Interactive Buttons */
+  --clay-btn-outer: 6px 8px 16px rgba(155, 168, 200, 0.32), -5px -5px 14px rgba(255, 255, 255, 0.9);
+  --clay-btn-hover: 3px 5px 10px rgba(155, 168, 200, 0.35), -3px -3px 8px rgba(255, 255, 255, 0.95);
+  --clay-btn-active: inset 3px 3px 6px rgba(140, 150, 180, 0.35), inset -2px -2px 5px rgba(255, 255, 255, 0.8);
 }
 
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background: radial-gradient(circle at 15% 15%, #f6f4ff 0%, #ebefff 40%, #e2e8f8 100%);
+  background-attachment: fixed;
+  color: #2d3748;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -22,30 +60,338 @@ body {
   flex-direction: column;
 }
 
-/* Leaflet map container & marker polish */
-.leaflet-container {
-  font-family: inherit;
-  width: 100%;
-  height: 100%;
-}
+/* ─────────────────────────────────────────────────────────
+   Authentic Claymorphism 3D Component Classes
+   ───────────────────────────────────────────────────────── */
 
-.custom-bin-marker {
-  background: transparent !important;
-  border: none !important;
-}
-
-.custom-leaflet-popup .leaflet-popup-content-wrapper {
-  padding: 8px 12px;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e2e8f0;
-}
-
-.custom-leaflet-popup .leaflet-popup-content {
-  margin: 4px;
-  line-height: normal;
-}
-
-.custom-leaflet-popup .leaflet-popup-tip {
+/* 1. Main White Clay Card (Puffy, soft rounded 3D container) */
+.clay-card,
+.clay-card-white {
   background: #ffffff;
+  border-radius: 1.75rem;
+  box-shadow: var(--clay-white-outer), var(--clay-white-inner);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 2. Rich Purple / Indigo Hero Clay Card (Like the top card in reference image) */
+.clay-card-purple {
+  background: linear-gradient(135deg, #6b63f6 0%, #5247e8 100%);
+  border-radius: 1.75rem;
+  box-shadow: var(--clay-purple-outer), var(--clay-purple-inner);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+/* 3. Dark Clay Panel (For night / heavy simulation modules) */
+.clay-card-dark {
+  background: linear-gradient(145deg, #242438 0%, #1a1a2b 100%);
+  border-radius: 1.75rem;
+  box-shadow: var(--clay-dark-outer), var(--clay-dark-inner);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+/* 4. Pastel Eco Clay Card (Soft mint tint) */
+.clay-card-mint {
+  background: #eefcf4;
+  border-radius: 1.75rem;
+  box-shadow: 10px 14px 28px rgba(140, 195, 165, 0.25), -8px -8px 20px rgba(255, 255, 255, 0.95),
+    inset 3px 3px 6px rgba(255, 255, 255, 0.95), inset -3px -3px 7px rgba(110, 175, 140, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+}
+
+/* 5. 3D Clay Icon Squircles (Direct match with Transfer, Pay Bill, Shop in reference) */
+.clay-squircle {
+  border-radius: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.clay-squircle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 1.25rem 1.25rem 0 0;
+  pointer-events: none;
+}
+
+.clay-squircle-green {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  box-shadow: var(--clay-green-outer), var(--clay-green-inner);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+}
+
+.clay-squircle-pink {
+  background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%);
+  box-shadow: var(--clay-rose-outer), var(--clay-rose-inner);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+}
+
+.clay-squircle-purple {
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+  box-shadow: var(--clay-purple-outer), var(--clay-purple-inner);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+}
+
+.clay-squircle-cyan {
+  background: linear-gradient(135deg, #38bdf8 0%, #06b6d4 100%);
+  box-shadow: var(--clay-cyan-outer), var(--clay-cyan-inner);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+}
+
+.clay-squircle-amber {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  box-shadow: var(--clay-amber-outer), var(--clay-amber-inner);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+}
+
+/* 6. Chunky Clay Buttons (Tactile, pressable 3D buttons) */
+.clay-btn {
+  border-radius: 1.15rem;
+  background: #ffffff;
+  color: #334155;
+  box-shadow: var(--clay-btn-outer), var(--clay-white-inner);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.4, 1);
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+
+.clay-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 8px 12px 20px rgba(150, 165, 195, 0.35), -6px -6px 16px rgba(255, 255, 255, 1), var(--clay-white-inner);
+}
+
+.clay-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: var(--clay-btn-active);
+}
+
+.clay-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: grayscale(20%);
+}
+
+/* Vibrant Purple Clay Button (like "⚡ Generate Smart Route") */
+.clay-btn-primary,
+.clay-btn-purple {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  box-shadow: 6px 8px 20px rgba(99, 102, 241, 0.45), -4px -4px 12px rgba(255, 255, 255, 0.6), var(--clay-purple-inner);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.clay-btn-purple:hover:not(:disabled) {
+  box-shadow: 8px 12px 24px rgba(99, 102, 241, 0.55), -4px -4px 14px rgba(255, 255, 255, 0.7), var(--clay-purple-inner);
+  transform: translateY(-2px);
+}
+
+.clay-btn-purple:active:not(:disabled) {
+  box-shadow: inset 3px 3px 6px rgba(30, 27, 75, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 0.4);
+  transform: translateY(1px) scale(0.98);
+}
+
+/* Emerald Clay Button (like Simulation or Confirm) */
+.clay-btn-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 6px 8px 20px rgba(16, 185, 129, 0.4), -4px -4px 12px rgba(255, 255, 255, 0.6), var(--clay-green-inner);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.clay-btn-emerald:hover:not(:disabled) {
+  box-shadow: 8px 12px 24px rgba(16, 185, 129, 0.5), -4px -4px 14px rgba(255, 255, 255, 0.7), var(--clay-green-inner);
+  transform: translateY(-2px);
+}
+
+.clay-btn-emerald:active:not(:disabled) {
+  box-shadow: inset 3px 3px 6px rgba(6, 78, 59, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 0.4);
+  transform: translateY(1px) scale(0.98);
+}
+
+/* 7. Clay Pills & Selectors (like "Outcome v" and "Weekly v" in reference image) */
+.clay-pill {
+  border-radius: 9999px;
+  background: #ffffff;
+  padding: 0.5rem 1.1rem;
+  box-shadow: 4px 6px 12px rgba(155, 168, 200, 0.25), -3px -3px 8px rgba(255, 255, 255, 0.9), var(--clay-white-inner);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.clay-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 5px 8px 14px rgba(155, 168, 200, 0.3), -4px -4px 10px rgba(255, 255, 255, 1), var(--clay-white-inner);
+}
+
+.clay-pill-active {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  box-shadow: 4px 6px 14px rgba(99, 102, 241, 0.4), -3px -3px 8px rgba(255, 255, 255, 0.6), var(--clay-purple-inner);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Dark Pill inside dark/purple hero card */
+.clay-pill-dark {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  border-radius: 9999px;
+  box-shadow: inset 2px 2px 4px rgba(255, 255, 255, 0.35), inset -2px -2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all 0.2s ease;
+}
+
+.clay-pill-dark:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* 8. Clay Badges (Compact 3D Indicators) */
+.clay-badge {
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  box-shadow: 3px 4px 8px rgba(160, 175, 205, 0.2), -2px -2px 6px rgba(255, 255, 255, 0.8),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.7), inset -2px -2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.clay-badge-red {
+  background: #ffe4e6;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+  box-shadow: 3px 4px 8px rgba(225, 29, 72, 0.18), -2px -2px 6px rgba(255, 255, 255, 0.9),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.8), inset -2px -2px 4px rgba(225, 29, 72, 0.12);
+}
+
+.clay-badge-yellow {
+  background: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fde68a;
+  box-shadow: 3px 4px 8px rgba(217, 119, 6, 0.18), -2px -2px 6px rgba(255, 255, 255, 0.9),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.8), inset -2px -2px 4px rgba(217, 119, 6, 0.12);
+}
+
+.clay-badge-green {
+  background: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  box-shadow: 3px 4px 8px rgba(22, 163, 74, 0.18), -2px -2px 6px rgba(255, 255, 255, 0.9),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.8), inset -2px -2px 4px rgba(22, 163, 74, 0.12);
+}
+
+.clay-badge-purple {
+  background: #ede9fe;
+  color: #6366f1;
+  border: 1px solid #ddd6fe;
+  box-shadow: 3px 4px 8px rgba(99, 102, 241, 0.18), -2px -2px 6px rgba(255, 255, 255, 0.9),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.8), inset -2px -2px 4px rgba(99, 102, 241, 0.12);
+}
+
+/* 9. 3D Clay Cylinder Bars (Exact match for the 3D bar chart in reference) */
+.clay-bar-cylinder {
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #fda4af 0%, #f43f5e 60%, #e11d48 100%);
+  box-shadow: 4px 6px 12px rgba(244, 63, 94, 0.35), inset 2px 3px 5px rgba(255, 255, 255, 0.7),
+    inset -2px -3px 5px rgba(159, 18, 57, 0.35);
+  position: relative;
+  transition: height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.clay-bar-cylinder-purple {
+  background: linear-gradient(180deg, #c7d2fe 0%, #818cf8 60%, #6366f1 100%);
+  box-shadow: 4px 6px 12px rgba(99, 102, 241, 0.35), inset 2px 3px 5px rgba(255, 255, 255, 0.7),
+    inset -2px -3px 5px rgba(49, 46, 129, 0.35);
+}
+
+.clay-bar-cylinder-green {
+  background: linear-gradient(180deg, #a7f3d0 0%, #34d399 60%, #10b981 100%);
+  box-shadow: 4px 6px 12px rgba(16, 185, 129, 0.35), inset 2px 3px 5px rgba(255, 255, 255, 0.7),
+    inset -2px -3px 5px rgba(6, 78, 59, 0.35);
+}
+
+/* 10. Recessed Clay Tracks (For progress bars & input fields) */
+.clay-track-recessed {
+  border-radius: 9999px;
+  background: #e9edf8;
+  box-shadow: inset 3px 3px 6px rgba(160, 175, 205, 0.35), inset -2px -2px 5px rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+}
+
+/* 11. Clay Map Frame */
+.clay-map-frame {
+  border-radius: 1.75rem;
+  box-shadow: var(--clay-white-outer), var(--clay-white-inner);
+  border: 4px solid #ffffff;
+  overflow: hidden;
+}
+
+/* 12. Floating bottom navigation bar matching the mobile mock */
+.clay-nav-float {
+  background: #564be6;
+  border-radius: 9999px;
+  box-shadow: 0 16px 36px rgba(86, 75, 230, 0.4), inset 3px 3px 6px rgba(255, 255, 255, 0.35),
+    inset -3px -3px 6px rgba(30, 25, 100, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Animations */
+@keyframes clay-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+.animate-clay-pulse {
+  animation: clay-pulse 2.5s ease-in-out infinite;
+}
+
+/* Leaflet Overrides for Clay Polish */
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 16px 32px rgba(140, 155, 190, 0.35), inset 2px 2px 4px rgba(255, 255, 255, 1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  box-shadow: 0 8px 16px rgba(140, 155, 190, 0.3) !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
 }

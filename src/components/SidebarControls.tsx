@@ -9,15 +9,14 @@ export interface SidebarControlsProps {
   selectedType: WasteType | 'all';
   onSelectType: (type: WasteType | 'all') => void;
   onlyCritical: boolean;
-  onToggleCritical: (value: boolean) => void;
-  routeSummary: RouteSummary;
+  onToggleOnlyCritical: () => void;
+  onGenerateRoute: () => void;
   isLoadingRoute: boolean;
-  onGenerateSmartRoute: () => Promise<void>;
-  onSimulateTimePassing: () => void;
-  onResetSimulation?: () => void;
-  routeError: string | null;
+  onSimulateTime: () => void;
+  onResetSimulation: () => void;
+  routeSummary: RouteSummary;
   routeGeneratedAt: string | null;
-  simulationNotice: string | null;
+  routeError: string | null;
 }
 
 export default function SidebarControls({
@@ -28,340 +27,267 @@ export default function SidebarControls({
   selectedType,
   onSelectType,
   onlyCritical,
-  onToggleCritical,
-  routeSummary,
+  onToggleOnlyCritical,
+  onGenerateRoute,
   isLoadingRoute,
-  onGenerateSmartRoute,
-  onSimulateTimePassing,
+  onSimulateTime,
   onResetSimulation,
-  routeError,
+  routeSummary,
   routeGeneratedAt,
-  simulationNotice,
+  routeError,
 }: SidebarControlsProps): JSX.Element {
-  const criticalBins = bins.filter((bin: BinLocation) => bin.fillLevel >= 75);
-  const criticalCount = criticalBins.length;
+  const criticalCount = bins.filter((b) => b.fillLevel >= 75).length;
+  const normalCount = bins.filter((b) => b.fillLevel < 40).length;
 
-  const getFillBadgeClass = (fillLevel: number): string => {
-    if (fillLevel >= 75) return 'bg-rose-100 text-rose-700 border-rose-200';
-    if (fillLevel >= 40) return 'bg-amber-100 text-amber-700 border-amber-200';
-    return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-  };
-
-  const getFillBarColor = (fillLevel: number): string => {
-    if (fillLevel >= 75) return 'bg-rose-500';
-    if (fillLevel >= 40) return 'bg-amber-500';
-    return 'bg-emerald-500';
-  };
-
-  const getTypeBadgeClass = (type: WasteType): string => {
-    switch (type) {
-      case 'plastic':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'paper':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'organic':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'general':
-      default:
-        return 'bg-slate-100 text-slate-700 border-slate-200';
-    }
-  };
+  const categories: Array<{
+    type: WasteType | 'all';
+    label: string;
+    icon: string;
+    squircleClass: string;
+  }> = [
+    { type: 'all', label: 'All Bins', icon: '🌐', squircleClass: 'clay-squircle-purple' },
+    { type: 'plastic', label: 'Plastic', icon: '🧴', squircleClass: 'clay-squircle-cyan' },
+    { type: 'paper', label: 'Paper', icon: '📦', squircleClass: 'clay-squircle-pink' },
+    { type: 'organic', label: 'Organic', icon: '🌿', squircleClass: 'clay-squircle-green' },
+    { type: 'general', label: 'General', icon: '🗑️', squircleClass: 'clay-squircle-amber' },
+  ];
 
   return (
-    <section className="flex flex-col gap-5">
-      {/* 4 Metric Cards Display */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3">
-        {/* Metric 1: Total Bins */}
-        <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-xs">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-            Total Bins
-          </span>
-          <span className="text-2xl font-bold text-slate-900 mt-1 block">
-            {bins.length}
-          </span>
-          <span className="text-[10px] text-slate-400 mt-0.5 block">
-            Telemetry Monitored
-          </span>
-        </div>
+    <div className="flex flex-col gap-6">
+      {/* ── 1. Hero Clay Card (Matching the Balance Card in reference photo) ── */}
+      <div className="clay-card-purple p-6 relative overflow-hidden flex flex-col justify-between shadow-2xl">
+        {/* Background decorative soft circles */}
+        <div className="absolute top-0 right-0 w-36 h-36 bg-white/10 rounded-full blur-2xl pointer-events-none -mr-8 -mt-8" />
+        <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-indigo-900/40 rounded-full blur-xl pointer-events-none" />
 
-        {/* Metric 2: Bins Needing Pickup */}
-        <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-xs">
-          <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">
-            Needing Pickup (&ge;75%)
-          </span>
-          <span className="text-2xl font-bold text-rose-600 mt-1 block">
-            {criticalCount}
-          </span>
-          <span className="text-[10px] text-rose-400 mt-0.5 block">
-            Critical Action Required
-          </span>
-        </div>
-
-        {/* Metric 3: Total Route Distance */}
-        <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-xs">
-          <span className="text-[10px] font-bold text-teal-600 uppercase tracking-wider block">
-            Route Distance
-          </span>
-          <span className="text-2xl font-bold text-teal-700 mt-1 block">
-            {routeSummary.distanceKm}
-            <span className="text-xs font-normal text-slate-500 ml-0.5">km</span>
-          </span>
-          <span className="text-[10px] text-teal-600/80 mt-0.5 block">
-            ~{routeSummary.estimatedMinutes} mins transit
-          </span>
-        </div>
-
-        {/* Metric 4: CO2 Prevented */}
-        <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-xs">
-          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
-            $CO_2$ Prevented
-          </span>
-          <span className="text-2xl font-bold text-emerald-700 mt-1 block">
-            {routeSummary.carbonSavedKg}
-            <span className="text-xs font-normal text-slate-500 ml-0.5">kg</span>
-          </span>
-          <span className="text-[10px] text-emerald-600/80 mt-0.5 block">
-            Emissions offset
-          </span>
-        </div>
-      </div>
-
-      {/* Interactive Simulation Controls & OSRM Trigger Panel */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 text-white rounded-xl p-4 shadow-md border border-slate-800 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        {/* Card Header with Status Chip */}
+        <div className="relative z-10 flex items-start justify-between">
+          <div>
+            <span className="text-xs uppercase font-semibold text-indigo-200 tracking-wider">
+              Fleet Optimization Status
+            </span>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white mt-1 tracking-tight">
+              {routeSummary.distanceKm > 0 ? `${routeSummary.distanceKm} km` : 'Standby'}
+            </div>
+          </div>
+          {/* Card Chip Badge */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <h3 className="text-sm font-bold text-white tracking-wide">
-              Real-Time Fleet Simulation
-            </h3>
+            <span>{criticalCount} Critical Bins</span>
           </div>
-          <span className="text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-emerald-300">
-            Garut Live Telemetry
-          </span>
         </div>
 
-        <p className="text-xs text-slate-300 leading-relaxed">
-          Simulate real-time waste accumulation across Garut city bins, then compute the shortest OSRM driving route to minimize transit time and carbon footprint.
-        </p>
-
-        {/* Simulation Feedback Notification */}
-        {simulationNotice && (
-          <div className="p-2.5 rounded-lg bg-emerald-950/80 border border-emerald-500/50 text-xs text-emerald-200 flex items-center justify-between animate-fadeIn">
-            <span>{simulationNotice}</span>
-            <span className="text-[10px] text-emerald-400 font-mono">Updated</span>
+        {/* Card Body Subtext */}
+        <div className="relative z-10 my-4 py-2 border-y border-white/15 grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-indigo-200 block text-[11px]">Est. Drive Time</span>
+            <strong className="text-white text-sm font-bold">{routeSummary.estimatedMinutes} mins</strong>
           </div>
-        )}
-
-        {/* Route Error Feedback */}
-        {routeError && (
-          <div className="p-2.5 rounded-lg bg-rose-950/80 border border-rose-600/60 text-xs text-rose-200 flex items-start gap-2">
-            <span className="text-rose-400 font-bold">⚠️</span>
-            <span>{routeError}</span>
+          <div className="text-right">
+            <span className="text-indigo-200 block text-[11px]">CO₂ Prevented</span>
+            <strong className="text-emerald-300 text-sm font-bold">-{routeSummary.carbonSavedKg} kg</strong>
           </div>
-        )}
+        </div>
 
-        {/* Route Success Feedback */}
-        {routeGeneratedAt && !routeError && (
-          <div className="p-2.5 rounded-lg bg-teal-950/70 border border-teal-500/40 text-xs text-teal-200 flex items-center justify-between">
-            <span>✓ Route optimized at {routeGeneratedAt}</span>
-            <span className="font-semibold text-white">{criticalCount} critical stops</span>
-          </div>
-        )}
-
-        {/* Action Buttons Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-          {/* Button 1: Generate Smart Route */}
+        {/* Card Action Buttons (Chunky, Pressable Clay Buttons) */}
+        <div className="relative z-10 flex flex-col sm:flex-row gap-2.5 mt-1">
           <button
             type="button"
-            onClick={(): void => {
-              void onGenerateSmartRoute();
-            }}
+            onClick={onGenerateRoute}
             disabled={isLoadingRoute || criticalCount < 2}
-            className="py-2.5 px-3 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+            className="clay-btn clay-btn-purple flex-1 py-3 px-4 text-sm font-bold flex items-center justify-center gap-2"
           >
             {isLoadingRoute ? (
               <>
-                <svg
-                  className="animate-spin h-3.5 w-3.5 text-slate-950"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                <span>Routing...</span>
+                <span className="animate-spin text-base">⏳</span>
+                <span>Calculating...</span>
               </>
             ) : (
               <>
-                <span>⚡</span>
+                <span className="text-base">⚡</span>
                 <span>Generate Smart Route</span>
               </>
             )}
           </button>
 
-          {/* Button 2: Simulate 5 Hours Passing */}
           <button
             type="button"
-            onClick={onSimulateTimePassing}
-            className="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+            onClick={onSimulateTime}
+            className="clay-btn py-3 px-4 text-slate-800 text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-50"
           >
             <span>🎲</span>
-            <span>Simulate 5 Hours Passing</span>
+            <span>+5 Hours</span>
           </button>
         </div>
 
-        {onResetSimulation && (
-          <button
-            type="button"
-            onClick={onResetSimulation}
-            className="text-[11px] text-slate-400 hover:text-slate-200 transition-colors text-center py-1 cursor-pointer"
-          >
-            ↺ Reset Bins to Default State
-          </button>
+        {routeGeneratedAt && (
+          <div className="relative z-10 text-[11px] text-indigo-200 text-center mt-3">
+            ✓ Last computed at {routeGeneratedAt} via OSRM
+          </div>
         )}
       </div>
 
-      {/* Filters & Monitoring Controls Panel */}
-      <div className="bg-white rounded-xl p-4 border border-slate-200/80 shadow-xs flex flex-col gap-3.5">
+      {/* ── 2. Category Action Squircles (Direct match to Transfer, Pay Bill, Shop in reference) ── */}
+      <div className="clay-card-white p-5 flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-800">
-            Filters & Category Controls
-          </h2>
-          <span className="text-xs text-slate-500">
-            Showing {filteredBins.length} of {bins.length}
+          <h3 className="font-bold text-slate-800 text-sm tracking-tight">Waste Categories</h3>
+          <span className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer">
+            {filteredBins.length} visible
           </span>
         </div>
 
-        {/* Waste Type Filter */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="waste-type-filter" className="text-xs font-medium text-slate-600">
-            Waste Category
-          </label>
-          <div id="waste-type-filter" className="grid grid-cols-5 gap-1.5">
-            {(['all', 'plastic', 'paper', 'organic', 'general'] as const).map(
-              (type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={(): void => onSelectType(type)}
-                  className={`px-2 py-1.5 rounded-lg text-xs font-medium capitalize border transition-all cursor-pointer text-center ${
-                    selectedType === type
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
+        <div className="grid grid-cols-5 gap-2 pt-1">
+          {categories.map((cat) => {
+            const isSelected = selectedType === cat.type;
+            return (
+              <button
+                key={cat.type}
+                type="button"
+                onClick={() => onSelectType(cat.type)}
+                className="flex flex-col items-center gap-1.5 group cursor-pointer"
+              >
+                <div
+                  className={`clay-squircle ${cat.squircleClass} h-12 w-12 text-xl transition-all ${
+                    isSelected ? 'ring-3 ring-indigo-500 ring-offset-2 scale-105' : 'opacity-85 hover:opacity-100 hover:scale-105'
                   }`}
                 >
-                  {type}
-                </button>
-              )
-            )}
+                  {cat.icon}
+                </div>
+                <span
+                  className={`text-[11px] font-semibold text-center leading-tight truncate w-full ${
+                    isSelected ? 'text-indigo-600 font-bold' : 'text-slate-500'
+                  }`}
+                >
+                  {cat.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Quick Filter Pill for Only Critical */}
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+          <span className="text-xs text-slate-500 font-medium">Critical Bins Priority (≥ 75%)</span>
+          <button
+            type="button"
+            onClick={onToggleOnlyCritical}
+            className={`clay-pill text-xs cursor-pointer ${onlyCritical ? 'clay-pill-active' : 'text-slate-600'}`}
+          >
+            <span>🚨 {onlyCritical ? 'Showing Critical' : 'Filter Critical'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── 3. Quick Stats Cards (Matching the clean white cards in reference image) ── */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="clay-card-white p-3.5 flex flex-col items-center text-center">
+          <div className="clay-squircle clay-squircle-purple h-9 w-9 text-sm mb-1.5">
+            📦
+          </div>
+          <span className="text-[11px] font-semibold text-slate-400">Total</span>
+          <strong className="text-lg font-extrabold text-slate-800">{bins.length}</strong>
+        </div>
+
+        <div className="clay-card-white p-3.5 flex flex-col items-center text-center">
+          <div className="clay-squircle clay-squircle-pink h-9 w-9 text-sm mb-1.5">
+            🚨
+          </div>
+          <span className="text-[11px] font-semibold text-slate-400">Critical</span>
+          <strong className="text-lg font-extrabold text-rose-500">{criticalCount}</strong>
+        </div>
+
+        <div className="clay-card-white p-3.5 flex flex-col items-center text-center">
+          <div className="clay-squircle clay-squircle-green h-9 w-9 text-sm mb-1.5">
+            ✅
+          </div>
+          <span className="text-[11px] font-semibold text-slate-400">Normal</span>
+          <strong className="text-lg font-extrabold text-emerald-600">{normalCount}</strong>
+        </div>
+      </div>
+
+      {/* ── 4. Telemetry Error or Notice ── */}
+      {routeError && (
+        <div className="clay-card-white p-4 border-l-4 border-rose-500 flex items-start gap-3 bg-rose-50/50">
+          <div className="clay-squircle clay-squircle-pink h-8 w-8 text-xs shrink-0">⚠️</div>
+          <div>
+            <h4 className="text-xs font-bold text-rose-800">Routing Notice</h4>
+            <p className="text-xs text-rose-600 mt-0.5">{routeError}</p>
           </div>
         </div>
+      )}
 
-        {/* Critical Filter Toggle */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-          <label
-            htmlFor="critical-toggle-sidebar"
-            className="text-xs font-medium text-slate-700 cursor-pointer select-none"
+      {/* ── 5. Bins Monitoring Queue (Matching the Recent Transactions list) ── */}
+      <div className="clay-card-white p-5 flex flex-col gap-3.5">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-slate-800">Telemetry Queue</span>
+            <span className="clay-badge clay-badge-purple text-[10px]">
+              {filteredBins.length} Bins
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onResetSimulation}
+            className="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
           >
-            Highlight Critical Fill Only (&ge;75%)
-          </label>
-          <input
-            id="critical-toggle-sidebar"
-            type="checkbox"
-            checked={onlyCritical}
-            onChange={(e): void => onToggleCritical(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-          />
-        </div>
-      </div>
-
-      {/* Bin List Telemetry Card */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col">
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-800">
-            Garut City Bins Telemetry
-          </h3>
-          <span className="text-xs text-slate-400">Click bin to focus on map</span>
+            Reset
+          </button>
         </div>
 
-        <div className="divide-y divide-slate-100 max-h-[380px] overflow-y-auto">
-          {filteredBins.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-400">
-              No bin locations match your current filter selection.
-            </div>
-          ) : (
-            filteredBins.map((bin: BinLocation) => {
-              const isSelected = bin.id === selectedBinId;
-              return (
-                <div
-                  key={bin.id}
-                  onClick={(): void => onSelectBin(bin.id)}
-                  onKeyDown={(e): void => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      onSelectBin(bin.id);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  className={`p-3.5 hover:bg-slate-50/80 transition-colors cursor-pointer text-left ${
-                    isSelected ? 'bg-emerald-50/60 ring-1 ring-inset ring-emerald-300' : ''
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-900">
-                          {bin.name}
-                        </span>
-                        <span
-                          className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${getTypeBadgeClass(
-                            bin.type
-                          )}`}
-                        >
-                          {bin.type}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
-                        {bin.lat.toFixed(4)}, {bin.lng.toFixed(4)} • ID: {bin.id}
-                      </p>
-                    </div>
+        <div className="flex flex-col gap-2.5 max-h-[340px] overflow-y-auto pr-1">
+          {filteredBins.map((bin) => {
+            const isSelected = selectedBinId === bin.id;
+            const isCritical = bin.fillLevel >= 75;
+            const isModerate = bin.fillLevel >= 40 && bin.fillLevel < 75;
 
-                    <span
-                      className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${getFillBadgeClass(
-                        bin.fillLevel
-                      )}`}
-                    >
-                      {bin.fillLevel}%
-                    </span>
+            const squircleStyle = isCritical
+              ? 'clay-squircle-pink'
+              : isModerate
+              ? 'clay-squircle-amber'
+              : 'clay-squircle-green';
+
+            return (
+              <button
+                key={bin.id}
+                type="button"
+                onClick={() => onSelectBin(bin.id)}
+                className={`w-full text-left p-3 rounded-2xl flex items-center justify-between transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-indigo-50/80 ring-2 ring-indigo-400 shadow-sm'
+                    : 'hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`clay-squircle ${squircleStyle} h-10 w-10 text-sm shrink-0`}>
+                    {bin.type === 'plastic' && '🧴'}
+                    {bin.type === 'paper' && '📦'}
+                    {bin.type === 'organic' && '🌿'}
+                    {bin.type === 'general' && '🗑️'}
                   </div>
-
-                  {/* Fill Level Progress Bar */}
-                  <div className="mt-2.5 w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${getFillBarColor(
-                        bin.fillLevel
-                      )}`}
-                      style={{ width: `${bin.fillLevel}%` }}
-                    />
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 line-clamp-1">{bin.name}</div>
+                    <div className="text-[11px] text-slate-400 capitalize">{bin.type} sector</div>
                   </div>
                 </div>
-              );
-            })
-          )}
+
+                <div className="text-right">
+                  <span
+                    className={`clay-badge ${
+                      isCritical
+                        ? 'clay-badge-red'
+                        : isModerate
+                        ? 'clay-badge-yellow'
+                        : 'clay-badge-green'
+                    }`}
+                  >
+                    {bin.fillLevel}%
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
-    </section>
+    </div>
   );
 }
